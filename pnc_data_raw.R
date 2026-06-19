@@ -11,23 +11,13 @@ library(dplyr)
 library(survey)  
 library(ggplot2)  
 
-
-# Read DHS dataset SPSS .sav file
 NRdata <- read_sav(file.choose())
-
-# View the structure of the dataset
 #glimpse( NRdata)
 dim( NRdata)
-
 colnames( NRdata)
-# View variablta)
-
-# To see the variables labels 
-#print_labels( NRdata$)
 
 
-#..................................
-# #Identify Key Variables for Survey Design
+# Key Variables for pnc
 #V001 = dhs cluster
 #v002 = household number
 # v003 = respondand line number
@@ -84,7 +74,7 @@ pnc_data <- NRdata %>%
 #  group_by(CASEID) %>%                              # keep only the most recent birth (smallest P19)
 #  ungroup()
 
-# Check unweighted N
+
 dim(pnc_data)
 colSums(is.na(pnc_data)) # 3 VARIABLE HAS MISSING VALUE HUS_EDU (V701) , hUS_OCCU(V705) , DEC_IN_HEALTHCARE (V743A)
 pnc_data <- pnc_data %>%
