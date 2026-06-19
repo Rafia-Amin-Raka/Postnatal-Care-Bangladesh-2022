@@ -6,10 +6,10 @@ library(factoextra)
 library(VIM)
 library(missRanger)
 library(tidyverse)
-library(haven)    # For reading DHS datasets (SPSS, Stata, SAS)
-library(dplyr)    # For data manipulation
-library(survey)   # For survey-weighted analysis
-library(ggplot2)  # For visualization
+library(haven)    
+library(dplyr)   
+library(survey)  
+library(ggplot2)  
 
 
 # Read DHS dataset SPSS .sav file
