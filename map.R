@@ -17,37 +17,9 @@ library(geodata)
 library(tidyr)
 
 
-#  Load spatial files 
-pnc_data <- readRDS("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/data/pnc_data_raw_clean.rds")
-gps_data <- st_read("C:/Users/Raka/OneDrive/Thesis/data/GPS DATA/BDGE81FL/BDGE81FL.shp")
+
 bgd_adm2 <- readRDS("C:/Users/Raka/OneDrive/Thesis/data/bgd_adm2.rds")
 bgd_adm1 <- readRDS("C:/Users/Raka/OneDrive/Thesis/data/bgd_adm1.rds")
-
-table(pnc_data$V024)
-colnames(pnc_data)
-
-#Spatial join: cluster points → district polygons 
-gps_data <- st_transform(gps_data, st_crs(bgd_adm2))
-
-cluster_district <- st_join(
-  gps_data %>% select(DHSCLUST),
-  bgd_adm2 %>% select(NAME_1, NAME_2),
-  join = st_within
-) %>%
-  st_drop_geometry() %>%
-  rename(ADM1NAME = NAME_1,
-         ADM2NAME = NAME_2)
-
-map_data <- left_join(pnc_data, cluster_district, by = c("V001" = "DHSCLUST"))
-cat("Districts matched:", sum(!is.na(map_data$ADM2NAME)), "/", nrow(map_data), "\n")
-
-saveRDS(map_data,"C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/data/map_data.rds")
-write.csv(st_drop_geometry(map_data),
-          "C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/data/map_data.csv",
-          row.names = FALSE)
-
-
-
 map_data <- readRDS("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/data/map_data.rds")
 #  Weighted district-level PNC % 
 # dist_pnc_spatial <- map_data %>%
@@ -136,111 +108,44 @@ bgd_adm2_label <- bgd_adm2_pnc %>%
     lat   = st_coordinates(st_centroid(geometry))[, 2]
   )
 
-# #dist Plot blue white ───────────────────────────────────────────────────────────────────
-# p_dist <- ggplot() +
-#   # District choropleth
-#   geom_sf(
-#     data      = bgd_adm2_pnc,
-#     aes(fill  = district_PNC),
-#     color     = "white",
-#     linewidth = 0.4
-#   ) +
-# 
-#   # Division borders
-#   geom_sf(data= bgd_adm1,fill = NA,color= "white",linewidth = 1.5
-#   ) +
-# 
-#   # District labels: name + % + n
-#   geom_text(data= bgd_adm2_label, aes(x = lon, y = lat, label = label),
-#     size= 4.5,fontface= "bold",color= "black",lineheight    = 0.85,
-#     check_overlap = FALSE
-#   ) +
-# 
-#   # Colour scale
-#   scale_fill_distiller(
-#     palette   = "YlGnBu",
-#     direction = 1,
-#     name      = "% PNC Utilisation",
-#     limits    = c(0, 100),
-#     breaks    = seq(0, 100, 25),
-#     labels    = paste0(seq(0, 100, 25), "%"),
-#     na.value  = "grey88",
-#     guide     = guide_colorbar(
-#       title.position = "top",
-#       title.hjust    = 0.5,
-#       barwidth       = unit(0.8, "cm"),
-#       barheight      = unit(15, "cm"),
-#       frame.colour   = "black",
-#       ticks.colour   = "black"
-#     )
-#   ) +
-# 
-#   coord_sf(xlim   = c(88.0, 92.7),ylim   = c(20.7, 26.7),expand = FALSE
-#   ) +
-#   labs(x = "Null", y = "Null") +
-#   theme_bw(base_size = 20) +
-#   theme(
-#     axis.text         = element_text(size = 16, colour = "black"),
-#     axis.title        = element_text(),
-#     axis.ticks        = element_line(colour = "black", linewidth = 0.5),
-#     panel.grid.major  = element_line(colour = "grey90", linewidth = 0.3,
-#                                      linetype = "dotted"),
-#     panel.grid.minor  = element_blank(),
-#     panel.border      = element_rect(colour = "black", fill = NA,
-#                                      linewidth = 1.2),
-#     panel.background  = element_rect(fill = "white"),
-#     legend.position   = "right",
-#     legend.title      = element_text(face = "bold", size = 16),
-#     legend.text       = element_text(size = 14),
-#     legend.margin     = margin(0, 0, 0, 10),
-#     plot.margin       = margin(15, 15, 15, 15)
-#   )
-# print(p_dist)
-# ggsave("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/model 3/figures/pnc_dist_map2.png",
-#   plot  = p_dist,  width = 20, height = 24, units = "in",dpi   = 1200, bg = "white")
-# ggsave(#   "C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/weighted map/figures/pnc_dist_map2.tiff",
-#   plot = p, width= 5, height = 6, units = "in",dpi = 600, bg = "white",compression = "lzw")
-# cat("\n✔ Map saved successfully.\n")
-
-
 
 
 
 # ── DIVISION-LEVEL PNC MAP ────────────────────────────────────────────────────
 
-# Weighted division-level PNC % 
-# divi_pnc_spatial <- map_data %>%
-#   filter(!is.na(ADM1NAME), !is.na(PNC_care)) %>%
-#   mutate( wt = V005 / 1e6,pnc_bin = ifelse(PNC_care == "1", 1, 0)
-#   ) %>%
-#   group_by(ADM1NAME) %>%
-#   summarise(n_total = n(),
-#     n_yes = sum(pnc_bin == 1, na.rm = TRUE),
-#     n_no = sum(pnc_bin == 0, na.rm = TRUE),
-#     pct_yes_wtd = weighted.mean(pnc_bin, wt, na.rm = TRUE) * 100,
-#     pct_no_wtd = 100 - pct_yes_wtd,
-#     .groups = "drop"
-#   ) %>%
-#   mutate(
-#     Total = paste0(n_total, " (100%)"),
-#     Yes = paste0(n_yes, " (", round(pct_yes_wtd, 1), "%)"),
-#     No = paste0(n_no, " (", round(pct_no_wtd, 1), "%)")
-#   ) %>%
-#   rename(NAME_1 = ADM1NAME)
-# bgd_adm1_pnc <- bgd_adm1 %>%
-#   left_join(divi_pnc_spatial, by = "NAME_1") %>%
-#   filter(!is.na(pct_yes_wtd))
-# bgd_adm1_label <- bgd_adm1_pnc %>%
-#   mutate(label = paste0(NAME_1,"\n",round(pct_yes_wtd, 1),
-#       "%\n(n=",n_total,")"),
-#     lon = st_coordinates(st_centroid(geometry))[,1],
-#     lat = st_coordinates(st_centroid(geometry))[,2]
-#   )
-# print(bgd_adm1_pnc)
-# write.csv(
-#   st_drop_geometry(bgd_adm1_pnc),
-#   "C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/data/division_pnc_spatial_table.csv",
-#   row.names = FALSE)
+Weighted division-level PNC % 
+divi_pnc_spatial <- map_data %>%
+  filter(!is.na(ADM1NAME), !is.na(PNC_care)) %>%
+  mutate( wt = V005 / 1e6,pnc_bin = ifelse(PNC_care == "1", 1, 0)
+  ) %>%
+  group_by(ADM1NAME) %>%
+  summarise(n_total = n(),
+    n_yes = sum(pnc_bin == 1, na.rm = TRUE),
+    n_no = sum(pnc_bin == 0, na.rm = TRUE),
+    pct_yes_wtd = weighted.mean(pnc_bin, wt, na.rm = TRUE) * 100,
+    pct_no_wtd = 100 - pct_yes_wtd,
+    .groups = "drop"
+  ) %>%
+  mutate(
+    Total = paste0(n_total, " (100%)"),
+    Yes = paste0(n_yes, " (", round(pct_yes_wtd, 1), "%)"),
+    No = paste0(n_no, " (", round(pct_no_wtd, 1), "%)")
+  ) %>%
+  rename(NAME_1 = ADM1NAME)
+bgd_adm1_pnc <- bgd_adm1 %>%
+  left_join(divi_pnc_spatial, by = "NAME_1") %>%
+  filter(!is.na(pct_yes_wtd))
+bgd_adm1_label <- bgd_adm1_pnc %>%
+  mutate(label = paste0(NAME_1,"\n",round(pct_yes_wtd, 1),
+      "%\n(n=",n_total,")"),
+    lon = st_coordinates(st_centroid(geometry))[,1],
+    lat = st_coordinates(st_centroid(geometry))[,2]
+  )
+print(bgd_adm1_pnc)
+write.csv(
+  st_drop_geometry(bgd_adm1_pnc),
+  "C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/data/division_pnc_spatial_table.csv",
+  row.names = FALSE)
 
 
 
@@ -335,75 +240,6 @@ ggsave("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/data/we
 
 
 
-# p_div <- ggplot() +
-#   
-#   # ── Division choropleth fill ──────────────────────────────────────────────
-#   geom_sf(
-#     data      = bgd_adm1_pnc,
-#     aes(fill  = division_PNC),
-#     color     = "white",        # division border colour (sand)
-#     linewidth = 0.4               # division border thickness
-#   ) +
-#   
-#   # ── Division labels: name + % + n ────────────────────────────────────────
-#   geom_text(
-#     data          = bgd_adm1_label,
-#     aes(x = lon, y = lat, label = label),
-#     size          = 10,          # label font size
-#     fontface      = "bold",
-#     color         = "black",
-#     lineheight    = 0.88,         # line spacing within label
-#     check_overlap = FALSE         # set TRUE to auto-hide overlapping labels
-#   ) +
-#   
-#   # ── Viridis colour scale ──────────────────────────────────────────────────
-#   scale_fill_viridis_c(
-#     option    = "viridis",        # palette: "viridis","magma","plasma","cividis","turbo"
-#     direction = 1,                # 1 = low→high; -1 = reverse
-#     name      = "% PNC Utilization",
-#     limits    = c(0, 100),        # colour scale range
-#     breaks    = seq(0, 100, 25),  # legend tick positions
-#     labels    = paste0(seq(0, 100, 25), "%"),
-#     na.value  = "#c9b99a",        # colour for divisions with no data
-#     guide     = guide_colorbar(
-#       title.position = "top",
-#       title.hjust    = 0.5,
-#       barwidth       = unit(20, "cm"),   # legend bar width — adjust to fit ocean space
-#       barheight      = unit(2.5, "cm"),    # legend bar height (thin horizontal)
-#       frame.colour   = NA,               # no box around legend bar
-#       ticks.colour   = "#6b4f3a"         # tick mark colour
-#     )
-#   ) +
-#   coord_sf(xlim   = c(88.0, 92.7), ylim   = c(20.7, 26.7),expand = FALSE
-#   ) +  
-#   labs(x = NULL, y = NULL) +#   
-#   theme_bw(base_size = 20) +
-#   theme(
-#     axis.text        = element_text(size = 30, colour = "#3b2f2f"),
-#     axis.title       = element_text(),
-#     axis.ticks       = element_line(colour = "#6b4f3a", linewidth = 0.5),
-#     panel.grid.major = element_line(colour = "white", linewidth = 0.3,
-#                                     linetype = "dotted"),
-#     panel.grid.minor = element_blank(),
-#     panel.border     = element_rect(colour = "#6b4f3a", fill = NA,
-#                                     linewidth = 1.2),
-#     panel.background = element_rect(fill = "white"),   
-#     plot.background  = element_rect(fill = "white", color = NA),  
-#     legend.position   = c(0.33, 0.08),  
-#     legend.direction  = "horizontal",
-#     legend.background = element_blank(),
-#     legend.key        = element_blank(),
-#     legend.title      = element_text(face = "bold", size = 30,
-#                                      colour = "#3b2f2f"),
-#     legend.text       = element_text(size = 35, colour = "#3b2f2f"),#     
-#     plot.margin = margin(15, 15, 15, 15)
-#   )
-# print(p_div)
-# ggsave("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/weighted map/figures/pnc_division_map12vy10.png",
-#   plot  = p_div,width = 20, height = 24, units = "in",dpi   = 1200, bg = "white") 
-# ggsave("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/weighted map/figures/pnc_division_map12.tiff",
-#   plot= p_div,width= 20, height = 24, units = "in",dpi= 600, bg = "white",compression = "lzw") 
-# cat("\n✔ Division map saved successfully.\n")
 
 
 
@@ -423,7 +259,8 @@ ggsave("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/data/we
 
 
 
-#__________________district wise ________________________________________________
+
+#__________________district level ________________________________________________
 #===small size
 p_dist <- ggplot() +
   geom_sf(data= bgd_adm2_pnc,aes(fill  = district_PNC),color= "white",linewidth = 0.15
@@ -484,65 +321,6 @@ ggsave("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/data/we
 
 
 
-# p_dist <- ggplot() +
-#   #District choropleth fill
-#   geom_sf(data= bgd_adm2_pnc, aes(fill  = district_PNC),color = "#d4c5a9",inewidth = 0.4              
-#   ) +
-#   #Division borders (thicker, darker) 
-#   geom_sf(data= bgd_adm1,fill = NA,color = "#f0e8d8",linewidth = 1.6
-#   ) +
-#   #District labels: name + % + n
-#   geom_text(data = bgd_adm2_label,aes(x = lon, y = lat, label = label),
-#     size = 4.5,fontface = "bold",color = "black",lineheight = 0.85,check_overlap = FALSE 
-#   ) +
-#   #Viridis colour scale 
-#   scale_fill_viridis_c(
-#     option    = "viridis",        
-#     direction = 1,                
-#     name      = "% PNC Utilization",
-#     limits    = c(0, 100),        
-#     breaks    = seq(0, 100, 25),  
-#     labels    = paste0(seq(0, 100, 25), "%"),
-#     na.value  = "#c9b99a",        
-#     guide     = guide_colorbar(
-#       title.position = "top",
-#       title.hjust    = 0.5,
-#       barwidth       = unit(20, "cm"),   
-#       barheight      = unit(2.5, "cm"),  
-#       frame.colour   = NA,             
-#       ticks.colour   = "#6b4f3a"        
-#     )
-#   ) +
-#   #Map extent 
-#   coord_sf(xlim = c(88.0, 92.7),ylim = c(20.7, 26.7),expand = FALSE
-#   ) +
-#   labs(x = "Longitude", y = "Latitude") +
-#   theme_bw(base_size = 20) +
-#   theme(
-#     axis.text        = element_text(size = 30, colour = "#3b2f2f"),
-#     axis.title       = element_text(size = 35, face = "bold", colour = "#3b2f2f"),
-#     axis.ticks       = element_line(colour = "#6b4f3a", linewidth = 0.5),
-#     panel.grid.major = element_line(colour = "white", linewidth = 0.3,                                    linetype = "dotted"),
-#     panel.grid.minor = element_blank(),
-#     panel.border     = element_rect(colour = "#6b4f3a", fill = NA,
-#                                     linewidth = 1.2),
-#     panel.background = element_rect(fill = "white"),  
-#     plot.background  = element_rect(fill = "white", color = NA),
-#     legend.position  = c(0.33, 0.08),
-#     legend.direction  = "horizontal",
-#     legend.background = element_blank(), 
-#     legend.key        = element_blank(),
-#     legend.title      = element_text(face = "bold", size = 30,
-#                                      colour = "#3b2f2f"),
-#     legend.text       = element_text(size = 35, colour = "#3b2f2f"),
-#     plot.margin = margin(15, 15, 15, 15)
-#   )
-# print(p_dist)
-# ggsave("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/weighted map/figures/pnc_district_map4.png",
-#   plot =p_dist,width = 20, height = 24, units = "in",dpi= 1200, bg = "white")
-# ggsave("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/weighted map/figures/pnc_district_map4.tiff",
-#   plot= p_dist,width= 20, height = 24, units = "in",dpi = 600, bg = "white",compression = "lzw")
-# cat("\n✔ Division map saved successfully.\n")
 
 
 
@@ -556,27 +334,21 @@ library(cowplot)
 library(grid)
 library(gridExtra)
 
-# ── Spatial weights ──────────────────────────────────────────────
-coords <- st_coordinates(st_centroid(bgd_adm2_pnc))
+# Spatial weights 
 knn    <- knearneigh(coords, k = 4)
 nb     <- knn2nb(knn)
 lw     <- nb2listw(nb, style = "W")
 
-# ── Moran's I ────────────────────────────────────────────────────
+#Moran's I 
 moran_test <- moran.test(bgd_adm2_pnc$district_PNC, lw)
-
 moran_i <- round(moran_test$estimate["Moran I statistic"], 6)
 z_score <- round(moran_test$statistic, 6)
 p_value <- format(moran_test$p.value, scientific = FALSE, digits = 6)
 
-# ── Normal curve data ────────────────────────────────────────────
+ 
 x_vals   <- seq(-4, 4, length.out = 1000)
 curve_df <- data.frame(x = x_vals, y = dnorm(x_vals))
-
-
-# ── Legend data (colored squares + text) ─────────────────────────
-legend_df <- data.frame(
-  xmin  = rep(2.18, 7),
+legend_df <- data.frame(xmin  = rep(2.18, 7),
   xmax  = rep(2.45, 7),
   ymin  = c(0.388, 0.350, 0.312, 0.274, 0.236, 0.198, 0.160),
   ymax  = c(0.418, 0.380, 0.342, 0.304, 0.266, 0.228, 0.190),
@@ -584,16 +356,10 @@ legend_df <- data.frame(
             "#f3f0b5",
             "#fdd49e", "#fc8d59", "#e31a1c"),
   pval  = c("0.01", "0.05", "0.10", "---", "0.10", "0.05", "0.01"),
-  cval  = c("< -2.58", "-2.58 – -1.96", "-1.96 – -1.65",
-            "-1.65 – 1.65",
-            "1.65 – 1.96", "1.96 – 2.58", "> 2.58"),
-  y_mid = c(0.403, 0.365, 0.327, 0.289, 0.251, 0.213, 0.175)
-)
+  cval  = c("< -2.58", "-2.58 – -1.96", "-1.96 – -1.65","-1.65 – 1.65","1.65 – 1.96", "1.96 – 2.58", "> 2.58"),
+  y_mid = c(0.403, 0.365, 0.327, 0.289, 0.251, 0.213, 0.175))
 
-# ── Main curve plot ───────────────────────────────────────────────
-curve_plot <- ggplot(curve_df, aes(x, y)) +
-  
-  # Coloured zones
+curve_plot <- ggplot(curve_df, aes(x, y)) +  
   geom_area(data = subset(curve_df, x >= -1.65 & x <= 1.65), fill = "#f3f0b5") +
   geom_area(data = subset(curve_df, x >= 1.65 & x <= 1.96), fill = "#fdd49e") +
   geom_area(data = subset(curve_df, x >= 1.96 & x <= 2.58), fill = "#fc8d59") +
@@ -601,250 +367,43 @@ curve_plot <- ggplot(curve_df, aes(x, y)) +
   geom_area(data = subset(curve_df, x >= -1.96 & x <= -1.65), fill = "#d9f0d3") +
   geom_area(data = subset(curve_df, x >= -2.58 & x <= -1.96), fill = "#9ecae1") +
   geom_area(data = subset(curve_df, x < -2.58), fill = "#3182bd") +
-  
-  # Curve outline
-  geom_line(linewidth = 1, colour = "black") +
-  
-  # Z-score line
-  geom_segment(
-    aes(x = z_score, xend = z_score, y = 0, yend = -0.07),
-    colour = "red",
-    linewidth = 1.2,
-    linetype = "dotted"
-  ) +
-  
-  # Stats top-left
-  annotate(
-    "text",
-    x = -3.95,
-    y = 0.40,
-    hjust = 0,
-    size = 3.8,
-    fontface = "bold",
-    label = paste0(
-      "Moran's Index: ", moran_i,
-      "\nz-score: ", z_score,
-      "\np-value: ", p_value
-    )
-  ) +
-  
-  # Random label
-  annotate(
-    "text",
-    x = 0,
-    y = 0.13,
-    label = "(Random)",
-    size = 5,
-    fontface = "bold"
-  ) +
-  
-  # Arrows
-  annotate(
-    "segment",
-    x = -3.5,
-    xend = -1.7,
-    y = 0.08,
-    yend = 0.08,
-    arrow = arrow(length = unit(0.18, "cm")),
-    linewidth = 0.8
-  ) +
-  
-  annotate(
-    "segment",
-    x = 2,
-    xend = 3.8,
-    y = 0.08,
-    yend = 0.08,
-    arrow = arrow(length = unit(0.18, "cm")),
-    linewidth = 0.8
-  ) +
-  
-  # Significant labels
-  annotate(
-    "text",
-    x = -2.3,
-    y = 0.045,
-    label = "Significant",
-    size = 4.2,
-    fontface = "bold"
-  ) +
-  
-  annotate(
-    "text",
-    x = 3,
-    y = 0.045,
-    label = "Significant",
-    size = 4.2,
-    fontface = "bold"
-  ) +
-  
-  # Legend headers
-  annotate(
-    "text",
-    x = 2.30,
-    y = 0.438,
-    hjust = 0.5,
-    size = 3.5,
-    fontface = "bold",
-    label = "Significance Level\n(p-value)"
-  ) +
-  
-  annotate(
-    "text",
-    x = 3.10,
-    y = 0.438,
-    hjust = 0,
-    size = 3.5,
-    fontface = "bold",
-    label = "Critical Value\n(z-score)"
-  ) +
-  
-  # Colored legend boxes
-  geom_rect(
-    data = legend_df,
-    aes(
-      xmin = xmin,
-      xmax = xmax,
-      ymin = ymin,
-      ymax = ymax,
-      fill = fill
-    ),
-    inherit.aes = FALSE,
-    color = "gray30",
-    linewidth = 0.25
-  ) +
-  
+  geom_line(linewidth = 1, colour = "black") + 
+  geom_segment(aes(x = z_score, xend = z_score, y = 0, yend = -0.07),colour = "red",linewidth = 1.2,linetype = "dotted") +
+  annotate("text", x = -3.95, y = 0.40,hjust = 0, size = 3.8,fontface = "bold",label = paste0("Moran's Index: ", moran_i,
+      "\nz-score: ", z_score,"\np-value: ", p_value)) +  
+  annotate( "text",x = 0,y = 0.13,label = "(Random)", size = 5,fontface = "bold") +
+  annotate("segment",x = -3.5,xend = -1.7,y = 0.08,yend = 0.08,arrow = arrow(length = unit(0.18, "cm")),linewidth = 0.8) +  
+  annotate("segment",x = 2,xend = 3.8, y = 0.08, yend = 0.08,arrow = arrow(length = unit(0.18, "cm")),linewidth = 0.8) +   
+  annotate("text", x = -2.3,y = 0.045,label = "Significant",size = 4.2,fontface = "bold") +  
+  annotate("text",x = 3,y = 0.045,label = "Significant",size = 4.2,fontface = "bold") +  
+  annotate("text",x = 2.30,y = 0.438,hjust = 0.5,size = 3.5,fontface = "bold",label = "Significance Level\n(p-value)") +  
+  annotate("text",x = 3.10,y = 0.438,hjust = 0,size = 3.5,fontface = "bold",label = "Critical Value\n(z-score)") +  
+  geom_rect(data = legend_df,aes(xmin = xmin,xmax = xmax,ymin = ymin,ymax = ymax,fill = fill),inherit.aes = FALSE,color = "gray30",linewidth = 0.25) +  
   scale_fill_identity() +
-  
-  # p-value labels
-  geom_text(
-    data = legend_df,
-    aes(
-      x = xmin - 0.04,
-      y = y_mid,
-      label = pval
-    ),
-    inherit.aes = FALSE,
-    hjust = 1,
-    size = 3.1,
-    fontface = "bold"
-  ) +
-  
-  # Critical value labels
-  geom_text(
-    data = legend_df,
-    aes(
-      x = xmax + 0.04,
-      y = y_mid,
-      label = cval
-    ),
-    inherit.aes = FALSE,
-    hjust = 0,
-    size = 3.1,
-    fontface = "bold"
-  ) +
-  
-  coord_cartesian(
-    xlim = c(-4, 4),
-    ylim = c(-0.02, 0.42),
-    clip = "off"
-  ) +
-  
-  # ── REMOVED GRIDLINES HERE ─────────────────────────────────────
-  theme_void() +
-  
-  theme(
-    plot.margin = margin(5, 5, 0, 5),
-    plot.background = element_rect(
-      fill = "white",
-      colour = NA
-    )
-  )
+  geom_text(data = legend_df, aes(x = xmin - 0.04,y = y_mid,label = pval),inherit.aes = FALSE,hjust = 1,size = 3.1,fontface = "bold") +  
+  geom_text(data = legend_df, aes(x = xmax + 0.04,y = y_mid,label = cval),inherit.aes = FALSE,hjust = 0,size = 3.1,fontface = "bold") +  
+  coord_cartesian(xlim = c(-4, 4),ylim = c(-0.02, 0.42),clip = "off") + 
+  theme_void() +  
+  theme(plot.margin = margin(5, 5, 0, 5), plot.background = element_rect(fill = "white",colour = NA))
 
-# ── Map patterns ─────────────────────────────────────────────────
 set.seed(123)
-
-bgd_adm2_pnc$disp_fill <- runif(
-  nrow(bgd_adm2_pnc),
-  0,
-  100
-)
-
-bgd_adm2_pnc$random_fill <- sample(
-  bgd_adm2_pnc$district_PNC
-)
-
-# ── Dispersed map ────────────────────────────────────────────────
-map_dispersed <- ggplot() +
-  
-  geom_sf(
-    data = bgd_adm2_pnc,
-    aes(fill = disp_fill),
-    color = "gray70",
-    linewidth = 0.15
-  ) +
-  
-  scale_fill_gradient(
-    low = "white",
-    high = "gray20"
-  ) +
-  
+bgd_adm2_pnc$disp_fill <- runif(nrow(bgd_adm2_pnc),0,100)
+bgd_adm2_pnc$random_fill <- sample(bgd_adm2_pnc$district_PNC)
+map_dispersed <- ggplot() +  
+  geom_sf(data = bgd_adm2_pnc,aes(fill = disp_fill),color = "gray70",linewidth = 0.15) +  
+  scale_fill_gradient(low = "white",high = "gray20") +
   theme_void() +
   
-  theme(
-    legend.position = "none",
-    panel.border = element_rect(
-      colour = "black",
-      fill = NA,
-      linewidth = 0.8
-    ),
-    
-    # ── ADDED SPACE BELOW MAP ────────────────────────────────────
-    plot.margin = margin(2, 2, 15, 2)
-  )
-
-# ── Random map ───────────────────────────────────────────────────
-map_random <- ggplot() +
-  
-  geom_sf(
-    data = bgd_adm2_pnc,
-    aes(fill = random_fill),
-    color = "gray70",
-    linewidth = 0.15
-  ) +
-  
-  scale_fill_gradient(
-    low = "white",
-    high = "gray20"
-  ) +
-  
-  theme_void() +
-  
-  theme(
-    legend.position = "none",
-    panel.border = element_rect(
-      colour = "black",
-      fill = NA,
-      linewidth = 0.8
-    ),
-    
-    # ── ADDED SPACE BELOW MAP ────────────────────────────────────
-    plot.margin = margin(2, 2, 15, 2)
-  )
-
-# ── Clustered map ────────────────────────────────────────────────
-map_clustered <- ggplot() +
-  
-  geom_sf(
-    data = bgd_adm2_pnc,
-    aes(fill = district_PNC),
-    color = "gray70",
-    linewidth = 0.15
-  ) +
-  
-  scale_fill_gradient(
-    low = "white",
-    high = "gray20"
+  theme(legend.position = "none",panel.border = element_rect(colour = "black",fill = NA,linewidth = 0.8),)
+map_random <- ggplot() + 
+  geom_sf(data = bgd_adm2_pnc, aes(fill = random_fill),color = "gray70",linewidth = 0.15) +  
+  scale_fill_gradient(low = "white",high = "gray20") +  
+  theme_void() +  
+  theme(legend.position = "none",panel.border = element_rect(colour = "black",fill = NA,linewidth = 0.8 ),   
+    plot.margin = margin(2, 2, 15, 2))
+map_clustered <- ggplot() +  
+  geom_sf(data = bgd_adm2_pnc,aes(fill = district_PNC),color = "gray70",linewidth = 0.15) +  
+  scale_fill_gradient(low = "white",high = "gray20"
   ) +
   
   theme_void() +
@@ -857,11 +416,11 @@ map_clustered <- ggplot() +
       linewidth = 1.5
     ),
     
-    # ── ADDED SPACE BELOW MAP ────────────────────────────────────
+  
     plot.margin = margin(2, 2, 15, 2)
   )
 
-# ── Add labels under maps ────────────────────────────────────────
+
 map1 <- ggdraw(map_dispersed) +
   draw_label(
     "Dispersed",
@@ -889,46 +448,19 @@ map3 <- ggdraw(map_clustered) +
     fontface = "bold"
   )
 
-# ── Combine maps ─────────────────────────────────────────────────
+
 bottom_maps <- map1 + map2 + map3 +
   plot_layout(ncol = 3)
-
-# ── Final plot ───────────────────────────────────────────────────
-final_moran_plot <- curve_plot /
-  bottom_maps +
-  plot_layout(
-    heights = c(3, 1)
-  )
-
-
-
-
-
+final_moran_plot <- curve_plot /  bottom_maps +  plot_layout(heights = c(3, 1)  )
 #print(final_moran_plot)
+ggsave("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/New folder/moran_full_plot.tiff",
+  plot = final_moran_plot,dpi = 600,width = 18,height = 18,units = "cm",compression = "lzw",bg = "white")
+ggsave("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/New folder/moran_full_plot3.png",
+  plot = final_moran_plot,dpi = 600,width = 18,height = 18,units = "cm",bg = "white")
 
 
 
-# ── Save ─────────────────────────────────────────────────────────
-ggsave(
-  "C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/New folder/moran_full_plot.tiff",
-  plot = final_moran_plot,
-  dpi = 600,
-  width = 18,
-  height = 18,
-  units = "cm",
-  compression = "lzw",
-  bg = "white"
-)
 
-ggsave(
-  "C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/New folder/moran_full_plot3.png",
-  plot = final_moran_plot,
-  dpi = 600,
-  width = 18,
-  height = 18,
-  units = "cm",
-  bg = "white"
-)
 
 
 
@@ -950,452 +482,74 @@ ggsave(
 
 
 
-#-----------cold hotspot
-library(spdep)
 
-# ── 1. Spatial weights for districts ─────────────────────────────────────────
-dist_nb <- poly2nb(bgd_adm2_pnc, queen = TRUE)
-dist_lw <- nb2listw(dist_nb, style = "W", zero.policy = TRUE)
-
-# ── 2. Local Moran's I (LISA) ─────────────────────────────────────────────────
-lisa_dist <- localmoran(bgd_adm2_pnc$district_PNC, dist_lw, zero.policy = TRUE)
-
-# ── 3. Classify hotspot / coldspot ───────────────────────────────────────────
-bgd_adm2_pnc <- bgd_adm2_pnc %>%
-  mutate(
-    local_i  = lisa_dist[, "Ii"],
-    p_value  = lisa_dist[, "Pr(z != E(Ii))"],
-    lag_pnc  = lag.listw(dist_lw, district_PNC, zero.policy = TRUE),
-    mean_pnc = mean(district_PNC, na.rm = TRUE),
-    
-    spot_type = case_when(
-      district_PNC >= mean_pnc & lag_pnc >= mean_pnc & p_value < 0.05 ~ "Hot Spot (HH)",
-      district_PNC <  mean_pnc & lag_pnc <  mean_pnc & p_value < 0.05 ~ "Cold Spot (LL)",
-      district_PNC >= mean_pnc & lag_pnc <  mean_pnc & p_value < 0.05 ~ "Spatial Outlier (HL)",
-      district_PNC <  mean_pnc & lag_pnc >= mean_pnc & p_value < 0.05 ~ "Spatial Outlier (LH)",
-      TRUE ~ "Not Significant"
-    ),
-    
-    spot_type = factor(spot_type, levels = c(
-      "Hot Spot (HH)",
-      "Cold Spot (LL)",
-      "Spatial Outlier (HL)",
-      "Spatial Outlier (LH)",
-      "Not Significant"
-    ))
-  )
-
-# ── 4. Check cluster counts ───────────────────────────────────────────────────
-cat("\n── LISA Cluster Summary ──\n")
-print(table(bgd_adm2_pnc$spot_type))
-
-# ── 5. Color palette ──────────────────────────────────────────────────────────
-spot_colors <- c(
-  "Hot Spot (HH)"        = "#d73027",
-  "Cold Spot (LL)"       = "#4575b4",
-  "Spatial Outlier (HL)" = "#fdae61",
-  "Spatial Outlier (LH)" = "#abd9e9",
-  "Not Significant"      = "#d9d9d9"
-)
-
-# ── 6. District label with spot type ─────────────────────────────────────────
-bgd_adm2_spot_label <- bgd_adm2_pnc %>%
-  mutate(
-    lon   = st_coordinates(st_centroid(geometry))[, 1],
-    lat   = st_coordinates(st_centroid(geometry))[, 2]
-  )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# 
-# # ── 1. Run permutation-based Local Moran's I ─────────────────────────────────
-# set.seed(123)
-# lisa_dist <- localmoran_perm(
-#   bgd_adm2_pnc$district_PNC,
-#   dist_lw,
-#   nsim       = 999,        # number of permutations
-#   zero.policy = TRUE,
-#   alternative = "two.sided"
-# )
-# 
-# # ── 2. Extract CI bounds from permutation distribution ───────────────────────
-# # localmoran_perm stores permutation results as attributes
-# li_perm <- attr(lisa_dist, "internals")  # matrix of permuted Ii values
-# 
-# # For each district: mean and SD of permuted Ii
-# perm_mean <- apply(li_perm, 1, mean)
-# perm_sd   <- apply(li_perm, 1, sd)
-# 
-# # 95% CI bounds
-# ci_lower <- perm_mean - 1.96 * perm_sd
-# ci_upper <- perm_mean + 1.96 * perm_sd
-# 
-# # Observed local I
-# obs_i <- lisa_dist[, "Ii"]
-# 
-# # Significant if observed Ii falls OUTSIDE the 95% CI
-# sig_ci <- (obs_i < ci_lower) | (obs_i > ci_upper)
-# 
-# # ── 3. Classify hotspot / coldspot using CI ───────────────────────────────────
-# bgd_adm2_pnc <- bgd_adm2_pnc %>%
-#   mutate(
-#     local_i  = obs_i,
-#     lag_pnc  = lag.listw(dist_lw, district_PNC, zero.policy = TRUE),
-#     mean_pnc = mean(district_PNC, na.rm = TRUE),
-#     ci_lo    = ci_lower,
-#     ci_hi    = ci_upper,
-#     sig      = sig_ci,         # TRUE = significant cluster
-#     
-#     spot_type = case_when(
-#       district_PNC >= mean_pnc & lag_pnc >= mean_pnc & sig ~ "Hot Spot (HH)",
-#       district_PNC <  mean_pnc & lag_pnc <  mean_pnc & sig ~ "Cold Spot (LL)",
-#       district_PNC >= mean_pnc & lag_pnc <  mean_pnc & sig ~ "Spatial Outlier (HL)",
-#       district_PNC <  mean_pnc & lag_pnc >= mean_pnc & sig ~ "Spatial Outlier (LH)",
-#       TRUE ~ "Not Significant"
-#     ),
-#     
-#     spot_type = factor(spot_type, levels = c(
-#       "Hot Spot (HH)",
-#       "Cold Spot (LL)",
-#       "Spatial Outlier (HL)",
-#       "Spatial Outlier (LH)",
-#       "Not Significant"
-#     ))
-#   )
-# 
-# # ── 4. Check cluster counts ───────────────────────────────────────────────────
-# cat("\n── LISA Cluster Summary (CI-based) ──\n")
-# print(table(bgd_adm2_pnc$spot_type))
-# 
-# # ── 5. Optional: inspect CI for each district ────────────────────────────────
-# bgd_adm2_pnc %>%
-#   st_drop_geometry() %>%
-#   select(NAME_2, district_PNC, local_i, ci_lo, ci_hi, sig, spot_type) %>%
-#   arrange(desc(local_i)) %>%
-#   print(n = 20)
-# # ── 7. Plot ───────────────────────────────────────────────────────────────────
-# p_hotspot <- ggplot() +
-#   
-#   geom_sf(
-#     data      = bgd_adm2_pnc,
-#     aes(fill  = spot_type),
-#     color     = "white",
-#     linewidth = 0.15
-#   ) +
-#   
-#   geom_sf(
-#     data      = bgd_adm1,
-#     fill = "gray95",color= "#bdbdbd",
-#     linewidth = 0.6
-#   ) +
-#   
-#   geom_text(
-#     data      = bgd_adm2_spot_label,
-#     aes(x = lon, y = lat, label = label),
-#     size      = 1.4,
-#     fontface  = "plain",
-#     color     = "black",
-#     lineheight= 0.8,
-#     check_overlap = TRUE
-#   ) +
-#   
-#   scale_fill_manual(
-#     values = spot_colors,
-#     name   = "Cluster Type",
-#     drop   = FALSE
-#   ) +
-#   
-#   coord_sf(
-#     xlim   = c(88.0, 92.7),
-#     ylim   = c(20.7, 26.7),
-#     expand = FALSE,
-#     datum  = sf::st_crs(4326)
-#   ) +
-#   
-#   annotation_scale(
-#     location   = "br",
-#     width_hint = 0.22,
-#     text_cex   = 0.5,
-#     height     = unit(0.15, "cm")
-#   ) +
-#   
-#   annotation_north_arrow(
-#     location    = "tr",
-#     which_north = "true",
-#     style       = north_arrow_fancy_orienteering(),
-#     height      = unit(0.8, "cm"),
-#     width       = unit(0.8, "cm"),
-#     pad_y       = unit(0.4, "cm")
-#   ) +
-#   
-#   labs(
-#     x = NULL,
-#     y = NULL
-#   ) +
-#   
-#   theme_bw(base_size = 9) +
-#   
-#   theme(
-#     axis.text  = element_text(size = 5, colour = "#3b2f2f"),
-#     axis.ticks = element_line(colour = "#6b4f3a", linewidth = 0.25),
-#     axis.title = element_blank(),
-#     
-#     panel.grid.major = element_line(colour = "#eeeeee", linewidth = 0.12),
-#     panel.grid.minor = element_blank(),
-#     panel.border     = element_rect(colour = "#6b4f3a", fill = NA, linewidth = 0.6),
-#     panel.background = element_rect(fill = "white"),
-#     plot.background  = element_rect(fill = "white", color = NA),
-#     
-#     legend.position  = "right",
-#     legend.title     = element_text(face = "bold", size = 7,  colour = "#3b2f2f"),
-#     legend.text      = element_text(size  = 6.5,              colour = "#3b2f2f"),
-#     legend.key.size  = unit(0.4, "cm"),
-#     
-#     plot.margin = margin(5, 5, 5, 5)
-#   )
-# 
-# #print(p_hotspot)
-# 
-# # ── 8. Save ───────────────────────────────────────────────────────────────────
-# ggsave(
-#   "C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/New folder/hotspot_PNC_map.tiff",
-#   plot        = p_hotspot,
-#   dpi         = 600,
-#   width       = 13,
-#   height      = 15,
-#   units       = "cm",
-#   compression = "lzw",
-#   bg          = "white"
-# )
-# 
-# ggsave(
-#   "C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/New folder/hotspot_PNC_map.png",
-#   plot   = p_hotspot,
-#   dpi    = 300,
-#   width  = 13,
-#   height = 15,
-#   units  = "cm",
-#   bg     = "white"
-# )
-# 
-# cat("Saved → hotspot_PNC_map\n")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#===============Hotspot analysis==================================
 library(sf)
 library(dplyr)
 library(spdep)
 library(ggplot2)
 library(ggspatial)
 
-# Merge district prevalence
-bgd_adm2_pnc <- left_join(
-  bgd_adm2,
-  district_pnc,
-  by = c("NAME_2" = "ADM2NAME")
-)
-
+bgd_adm2_pnc <- left_join(bgd_adm2,district_pnc,by = c("NAME_2" = "ADM2NAME"))
 # Create neighbors
-coords <- st_coordinates(
-  st_centroid(bgd_adm2_pnc)
-)
+coords <- st_coordinates(st_centroid(bgd_adm2_pnc))
 
 knn <- knearneigh(coords, k = 4)
 nb  <- knn2nb(knn)
 lw  <- nb2listw(nb, style = "W")
 
-# Getis-Ord Gi*
-gi <- localG(
-  bgd_adm2_pnc$district_PNC,
-  lw
-)
-
+# Getis-Ord Gi
+gi <- localG(bgd_adm2_pnc$district_PNC,lw)
 bgd_adm2_pnc$GiZScore <- as.numeric(gi)
-
 # Hotspot categories
 bgd_adm2_pnc <- bgd_adm2_pnc %>%
-  mutate(
-    Hotspot = case_when(
+  mutate(Hotspot = case_when(
       GiZScore >= 2.58  ~ "99% Hot Spot",
       GiZScore >= 1.96  ~ "95% Hot Spot",
       GiZScore >= 1.65  ~ "90% Hot Spot",
       GiZScore <= -2.58 ~ "99% Cold Spot",
       GiZScore <= -1.96 ~ "95% Cold Spot",
       GiZScore <= -1.65 ~ "90% Cold Spot",
-      TRUE ~ "Not Significant"
-    )
-  )
+      TRUE ~ "Not Significant"))
 
-# Plot
-p_hotspot <- ggplot() +
-  
-  geom_sf(
-    data = bgd_adm2_pnc,
-    aes(fill = Hotspot),
-    color= "#bdbdbd",
-    linewidth = 0.25
-  ) +
-  
-  geom_sf(
-    data = bgd_adm1,
-    fill = NA,
-    color = "black",
-    linewidth = 0.3
-  ) +
-  
-  scale_fill_manual(
-    values = c(
+p_hotspot <- ggplot() +  
+  geom_sf(data = bgd_adm2_pnc,aes(fill = Hotspot),color= "#bdbdbd",linewidth = 0.25) +  
+  geom_sf(data = bgd_adm1,fill = NA,color = "black",linewidth = 0.3) +  
+  scale_fill_manual(values = c(
       "99% Hot Spot" = "#b2182b",
       "95% Hot Spot" = "#ef6548",
       "90% Hot Spot" = "#fdd0a2",
       "99% Cold Spot" = "#08306b",
       "95% Cold Spot" = "#2171b5",
       "90% Cold Spot" = "#6baed6",
-      "Not Significant" = "gray95"
-    ),
-    
-    name = "Hotspot Analysis"
-  ) +
+      "Not Significant" = "gray95"),    
+    name = "Hotspot Analysis") +
   
-  coord_sf(
-    xlim = c(88.0, 92.7),
-    ylim = c(20.7, 26.7),
-    expand = FALSE
-  ) +
-  
-  annotation_scale(
-    location = "tr",
-    width_hint = 0.22,
-    text_cex = 0.5,
-    height = unit(0.15, "cm")
-  ) +
-  
-  annotation_north_arrow(
-    location = "tr",
-    which_north = "true",
-    style = north_arrow_fancy_orienteering,
-    height = unit(0.8, "cm"),
-    width = unit(0.8, "cm"),
-    pad_y = unit(0.7, "cm")
-  ) +
-  
-  labs(
-    x = NULL,
-    y = NULL,
-  ) +
-  
-  theme_bw(base_size = 7) +
-  
-  theme(
-    
-    axis.text = element_text(
-      size = 4.5,
-      colour = "#3b2f2f"
-    ),
-    
-    axis.title = element_blank(),
-    
-    axis.ticks = element_line(
-      colour = "#6b4f3a",
-      linewidth = 0.4
-    ),
-    
-    panel.grid.major = element_line(
-      colour = "white",
-      linewidth = 0.2,
-      linetype = "dotted"
-    ),
-    
-    panel.grid.minor = element_blank(),
-    
-    panel.border = element_rect(
-      colour = "#6b4f3a",
-      fill = NA,
-      linewidth = 0.8
-    ),
-    
+  coord_sf(xlim = c(88.0, 92.7),ylim = c(20.7, 26.7),expand = FALSE) +  
+  annotation_scale(location = "tr",width_hint = 0.22,text_cex = 0.5,height = unit(0.15, "cm")) +  
+  annotation_north_arrow(location = "tr", which_north = "true", style = north_arrow_fancy_orienteering,height = unit(0.8, "cm"),width = unit(0.8, "cm"),
+    pad_y = unit(0.7, "cm")) +  
+  labs(x = NULL, y = NULL,) +  
+  theme_bw(base_size = 7) +  
+  theme(axis.text = element_text( size = 4.5, colour = "#3b2f2f"),    
+    axis.title = element_blank(),    
+    axis.ticks = element_line(colour = "#6b4f3a",linewidth = 0.4),    
+    panel.grid.major = element_line(colour = "white",linewidth = 0.2,linetype = "dotted"),    
+    panel.grid.minor = element_blank(),    
+    panel.border = element_rect(colour = "#6b4f3a",fill = NA,linewidth = 0.8),    
     panel.background = element_rect(fill = "white"),
-    plot.background = element_rect(fill = "white", color = NA),
-    
-    # Legend at right
-    legend.position = "right",
-    
-    legend.direction = "vertical",
-    
+    plot.background = element_rect(fill = "white", color = NA),     
+    legend.position = "right",    
+    legend.direction = "vertical",    
     legend.background = element_blank(),
-    legend.key = element_blank(),
-    
-    legend.title = element_text(
-      face = "bold",
-      size = 5,
-      colour = "#3b2f2f"
-    ),
-    
-    legend.text = element_text(
-      size = 4.2,
-      colour = "#3b2f2f"
-    )
-  )
-
+    legend.key = element_blank(),    
+    legend.title = element_text(face = "bold",size = 5,colour = "#3b2f2f"),    
+    legend.text = element_text(size = 4.2,colour = "#3b2f2f"))
 #print(p_hotspot)
-
-
-# Save
-ggsave(
-  "C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/New folder/district_hotspot_coldspot.tiff",
-  plot = p_hotspot,
-  dpi = 600,
-  width = 8,
-  height = 8,
-  units = "cm",
-  compression = "lzw",
-  bg = "white"
-)
-
-ggsave(
-  "C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/New folder/district_hotspot_coldspot.png",
-  plot = p_hotspot,
-  dpi = 600,
-  width = 8,
-  height = 8,
-  units = "cm",
-  bg = "white"
-)
+ggsave("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/New folder/district_hotspot_coldspot.tiff",plot = p_hotspot,
+  dpi = 600,width = 8,height = 8,units = "cm",compression = "lzw",bg = "white")
+ggsave("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/New folder/district_hotspot_coldspot.png",plot = p_hotspot,
+  dpi = 600,width = 8, height = 8,units = "cm",bg = "white")
 
 
 
@@ -1418,121 +572,72 @@ ggsave(
 
 
 # ── CLUSTER-LEVEL PNC MAP ─────────────────────────────────────────────────────
-# #Weighted cluster-level PNC %
-# clus_pnc_spatial <- map_data %>%
-#   filter(!is.na(V001), !is.na(PNC_care)) %>%
-#   mutate(
-#     wt = V005 / 1e6,
-#     pnc_bin = ifelse(PNC_care == "1", 1, 0)
-#   ) %>%
-#   group_by(V001) %>%
-#   summarise(
-#     n_total = n(),
-#     n_yes = sum(pnc_bin == 1, na.rm = TRUE),
-#     n_no = sum(pnc_bin == 0, na.rm = TRUE),
-#     pct_yes_wtd = weighted.mean(pnc_bin, wt, na.rm = TRUE) * 100,
-#     pct_no_wtd = 100 - pct_yes_wtd,
-#     .groups = "drop"
-#   ) %>%
-#   mutate(
-#     Total = paste0(n_total, " (100%)"),
-#     Yes = paste0(n_yes, " (", round(pct_yes_wtd, 1), "%)"),
-#     No = paste0(n_no, " (", round(pct_no_wtd, 1), "%)")
-#   ) %>%
-#   rename(DHSCLUST = V001)
-# 
-# clus_pnc_spatial_map <- gps_data %>%
-#   select(DHSCLUST, geometry) %>%
-#   left_join(clus_pnc_spatial, by = "DHSCLUST") %>%
-#   filter(!is.na(pct_yes_wtd))
-# 
-# print(clus_pnc_spatial_map)
-# 
-# write.csv(
-#   st_drop_geometry(clus_pnc_spatial_map),
-#   "C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/data/clus_pnc_spatial_table.csv",
-#   row.names = FALSE
-# )
+#Weighted cluster-level PNC %
+clus_pnc_spatial <- map_data %>%
+  filter(!is.na(V001), !is.na(PNC_care)) %>%
+  mutate( wt = V005 / 1e6, pnc_bin = ifelse(PNC_care == "1", 1, 0)) %>%
+  group_by(V001) %>%
+  summarise(n_total = n(),n_yes = sum(pnc_bin == 1, na.rm = TRUE),n_no = sum(pnc_bin == 0, na.rm = TRUE),pct_yes_wtd = weighted.mean(pnc_bin, wt, na.rm = TRUE) * 100,
+    pct_no_wtd = 100 - pct_yes_wtd,.groups = "drop") %>%
+  mutate( Total = paste0(n_total, " (100%)"), Yes = paste0(n_yes, " (", round(pct_yes_wtd, 1), "%)"), No = paste0(n_no, "(", round(pct_no_wtd, 1),"%)")) %>%
+  rename(DHSCLUST = V001)
+clus_pnc_spatial_map <- gps_data %>% select(DHSCLUST, geometry) %>% left_join(clus_pnc_spatial, by = "DHSCLUST") %>%  filter(!is.na(pct_yes_wtd))
+print(clus_pnc_spatial_map)
+write.csv(st_drop_geometry(clus_pnc_spatial_map),"C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/data/clus_pnc_spatial_table.csv",
+  row.names = FALSE)
 
 
 
 
-cluster_pnc <- map_data %>%
-  filter(!is.na(V001)) %>%
-  mutate(wt      = V005 / 1e6,
-         pnc_bin = as.integer(PNC_care == "1")) %>%
-  group_by(V001) %>%                              # group by cluster ID
-  summarise(
-    cluster_PNC = weighted.mean(pnc_bin, wt, na.rm = TRUE) * 100,
-    n_women     = n(),
-    .groups     = "drop"
-  )
+# cluster_pnc <- map_data %>%
+#   filter(!is.na(V001)) %>%
+#   mutate(wt = V005 / 1e6, pnc_bin = as.integer(PNC_care == "1")) %>%
+#   group_by(V001) %>%                             
+#   summarise(cluster_PNC = weighted.mean(pnc_bin, wt, na.rm = TRUE) * 100,
+#     n_women= n(), .groups= "drop"  )
+# cat("\n── Cluster PNC summary ──\n")
+# cat("Total clusters:", nrow(cluster_pnc), "\n")
+# print(summary(cluster_pnc$cluster_PNC))
 
-cat("\n── Cluster PNC summary ──\n")
-cat("Total clusters:", nrow(cluster_pnc), "\n")
-print(summary(cluster_pnc$cluster_PNC))
-
-# Join cluster PNC %to GPS coordinates ───────────────────────────
-cluster_map <- left_join(
-  gps_data %>% select(DHSCLUST, geometry),       # GPS points with coordinates
-  cluster_pnc,
-  by = c("DHSCLUST" = "V001")
-) %>%
-  filter(!is.na(cluster_PNC))                    # drop clusters with no PNC data
-
-#panel at bottom
-p_clust <- ggplot() +
-    geom_sf(data = bgd_adm2,fill = "gray95",color= "#bdbdbd",linewidth = 0.3
-  ) +
-  geom_sf(data= bgd_adm1,fill = NA,color= "black",linewidth = 0.3
-  ) +
-  geom_sf(data= cluster_map,aes(color = cluster_PNC),size  = 0.8 ,alpha = 0.8
-  ) +
-  scale_color_viridis_c(
-    option    = "viridis",
-    name      = "% PNC Utilization",
-    limits    = c(0, 100),
-    breaks    = seq(0, 100, 25),
-    labels    = paste0(seq(0, 100, 25), "%"),
-    na.value  = "#c9b99a",
-    guide     = guide_colorbar(
-      title.position = "top",
-      title.hjust    = 0.5,
-      barwidth       = unit(4, "cm"),
-      barheight      = unit(0.3, "cm"),
-      frame.colour   = NA,
-      ticks.colour   = "#6b4f3a",
-    )
-  ) +
-  coord_sf(xlim   = c(88.0, 92.7),ylim   = c(20.7, 26.7),expand = FALSE
-  ) +
-  labs(x = NULL, y = NULL) +
-  theme_bw(base_size = 9) +
-  theme(
-    axis.text        = element_text(size = 5, colour = "#3b2f2f"),
-    axis.title       = element_blank(),
-    axis.ticks       = element_line(colour = "#6b4f3a", linewidth = 0.5),
-    panel.grid.major = element_line(colour = "white", linewidth = 0.3,
-                                    linetype = "dotted"),
-    panel.grid.minor = element_blank(),
-    panel.border     = element_rect(colour = "#6b4f3a", fill = NA,
-                                    linewidth = 1.2),
-    panel.background = element_rect(fill = "white"),
-    plot.background  = element_rect(fill = "white", color = NA),
-    legend.position   = c(0.33, 0.08),
-    legend.direction  = "horizontal",
-    legend.background = element_blank(),
-    legend.key        = element_blank(),
-    legend.title      = element_text(face = "bold", size = 10,
-                                     colour = "#3b2f2f"),
-    legend.text       = element_text(size = 7, colour = "#3b2f2f"),
-    plot.margin = margin(5, 5, 5, 5)
-  )
-print(p_clust)
-ggsave("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/data/weighted map/cluster_PNC_map.tiff",
-       plot = p_clust,dpi = 600,width= 9,height= 11,units= "cm",compression = "lzw",bg= "white")
-ggsave("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/data/weighted map/cluster_PNC_map.png",
-       plot = p_clust,dpi = 300,width  = 9,height = 11,units  = "cm",bg = "white")
+# # Join cluster PNC %to GPS coordinates
+# cluster_map <- left_join(gps_data %>% select(DHSCLUST, geometry), cluster_pnc,by = c("DHSCLUST" = "V001")) %>%
+#   filter(!is.na(cluster_PNC))                   
+# p_clust <- ggplot() +
+#     geom_sf(data = bgd_adm2,fill = "gray95",color= "#bdbdbd",linewidth = 0.3) +
+#   geom_sf(data= bgd_adm1,fill = NA,color= "black",linewidth = 0.3) +
+#   geom_sf(data= cluster_map,aes(color = cluster_PNC),size  = 0.8 ,alpha = 0.8) +
+#   scale_color_viridis_c( option    = "viridis",
+#     name      = "% PNC Utilization",
+#     limits    = c(0, 100),
+#     breaks    = seq(0, 100, 25),
+#     labels    = paste0(seq(0, 100, 25), "%"),
+#     na.value  = "#c9b99a",
+#     guide     = guide_colorbar(title.position = "top",title.hjust = 0.5,barwidth = unit(4, "cm"), barheight = unit(0.3, "cm"),frame.colour   = NA,
+#       ticks.colour = "#6b4f3a",)) +
+#   coord_sf(xlim   = c(88.0, 92.7),ylim   = c(20.7, 26.7),expand = FALSE) +
+#   labs(x = NULL, y = NULL) +
+#   theme_bw(base_size = 9) +
+#   theme(axis.text        = element_text(size = 5, colour = "#3b2f2f"),
+#     axis.title       = element_blank(),
+#     axis.ticks       = element_line(colour = "#6b4f3a", linewidth = 0.5),
+#     panel.grid.major = element_line(colour = "white", linewidth = 0.3,linetype = "dotted"),
+#     panel.grid.minor = element_blank(),
+#     panel.border     = element_rect(colour = "#6b4f3a", fill = NA, linewidth = 1.2),
+#     panel.background = element_rect(fill = "white"),
+#     plot.background  = element_rect(fill = "white", color = NA),
+#     legend.position   = c(0.33, 0.08),
+#     legend.direction  = "horizontal",
+#     legend.background = element_blank(),
+#     legend.key        = element_blank(),
+#     legend.title      = element_text(face = "bold", size = 10, colour = "#3b2f2f"),
+#     legend.text       = element_text(size = 7, colour = "#3b2f2f"),
+#     plot.margin = margin(5, 5, 5, 5)
+#   )
+# print(p_clust)
+# ggsave("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/data/weighted map/cluster_PNC_map.tiff",
+#        plot = p_clust,dpi = 600,width= 9,height= 11,units= "cm",compression = "lzw",bg= "white")
+# ggsave("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/data/weighted map/cluster_PNC_map.png",
+#        plot = p_clust,dpi = 300,width  = 9,height = 11,units  = "cm",bg = "white")
 
 
 
@@ -1542,44 +647,20 @@ ggsave("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/data/we
 
 #alll 3 cluster plot
 
-library(sf)
-library(dplyr)
-library(ggplot2)
-library(grid)
-library(patchwork)
-
 # Weighted cluster prevalence
-cluster_pnc <- map_data %>%
-  filter(!is.na(V001)) %>%
-  mutate(
-    wt = V005 / 1e6,
-    pnc_bin = as.integer(PNC_care == "1")
-  ) %>%
+cluster_pnc <- map_data %>% filter(!is.na(V001)) %>% mutate(wt = V005 / 1e6, pnc_bin = as.integer(PNC_care == "1")) %>%
   group_by(V001, Residence) %>%
-  summarise(
-    cluster_PNC = weighted.mean(pnc_bin, wt, na.rm = TRUE) * 100,
-    n_women = n(),
-    .groups = "drop"
-  )
+  summarise(cluster_PNC = weighted.mean(pnc_bin, wt, na.rm = TRUE) * 100, n_women = n(),.groups = "drop")
 
 # Join GPS
-cluster_map <- left_join(
-  gps_data %>% select(DHSCLUST, geometry),
-  cluster_pnc,
-  by = c("DHSCLUST" = "V001")
-) %>%
-  filter(!is.na(cluster_PNC))
+cluster_map <- left_join  gps_data %>% select(DHSCLUST, geometry),
+  cluster_pnc, by = c("DHSCLUST" = "V001")) %>% filter(!is.na(cluster_PNC))
 
-# Split
+
 cluster_all <- cluster_map
+cluster_urban <- cluster_map %>% filter(Residence == 1)
+cluster_rural <- cluster_map %>% filter(Residence == 2)
 
-cluster_urban <- cluster_map %>%
-  filter(Residence == 1)
-
-cluster_rural <- cluster_map %>%
-  filter(Residence == 2)
-
-# Plot function
 plot_cluster_map <- function(data_map, title_text) {
   ggplot() +
     geom_sf(data = bgd_adm2,fill = "gray95",color = "#bdbdbd",linewidth = 0.25) +
@@ -1588,8 +669,7 @@ plot_cluster_map <- function(data_map, title_text) {
     scale_color_viridis_c(option = "viridis",name = "% PNC Utilization",
       limits = c(0, 100),breaks = seq(0, 100, 25),labels = paste0(seq(0, 100, 25), "%"),
       guide = guide_colorbar(title.position = "top",title.hjust = 0.5,
-        barwidth = unit(2.8, "cm"),barheight = unit(0.22, "cm"),
-        frame.colour = NA,ticks.colour = "#6b4f3a")) +
+        barwidth = unit(2.8, "cm"),barheight = unit(0.22, "cm"), frame.colour = NA,ticks.colour = "#6b4f3a")) +
     coord_sf(xlim = c(88.0, 92.7),ylim = c(20.7, 26.7),expand = FALSE) +
     annotation_scale(location = "tr",width_hint = 0.22,text_cex = 0.5, height = unit(0.15, "cm"))+
     annotation_north_arrow( location = "tr", which_north = "true", style = north_arrow_fancy_orienteering,
@@ -1613,35 +693,15 @@ plot_cluster_map <- function(data_map, title_text) {
       legend.text = element_text(size = 4,colour = "#3b2f2f"),
       plot.margin = margin(2, 2, 2, 2)    )
 }
-# Create plots
 p_all <- plot_cluster_map(cluster_all, "Overall")
 p_urban <- plot_cluster_map(cluster_urban, "Urban")
 p_rural <- plot_cluster_map(cluster_rural, "Rural")
-
-# Combine
-cluster_panel <- wrap_plots(
-  p_all,
-  p_urban,
-  p_rural,
-  ncol = 3
-)
-
-# Show
+cluster_panel <- wrap_plots(p_all, p_urban,p_rural,ncol = 3)
 #print(cluster_panel)
-
-
-
-# ── Save TIFF ────────────────────────────────────────────────────────────
-ggsave(
-  "C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/New folder/cluster_panel_overall_urban_rural.tiff",
+ggsave( "C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/New folder/cluster_panel_overall_urban_rural.tiff",
   plot = cluster_panel,  dpi = 600,width = 18,height = 9,units = "cm",compression = "lzw",bg = "white")
-
-# ── Save PNG ─────────────────────────────────────────────────────────────
-ggsave(
-  "C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/New folder/cluster_panel_overall_urban_rural.png",
+ggsave( "C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/New folder/cluster_panel_overall_urban_rural.png",
   plot = cluster_panel,  dpi = 600,width = 18,height = 9,units = "cm",bg = "white")
-
-
 cat("Saved → cluster_panel_overall_urban_rural\n")
 
 
@@ -1753,152 +813,26 @@ library(ggplot2)
 library(dplyr)
 library(readr)
 library(tidyr)
-
-# bgd_adm2 <- readRDS("C:/Users/Raka/OneDrive/Thesis/data/bgd_adm2.rds")
-# bgd_adm1 <- readRDS("C:/Users/Raka/OneDrive/Thesis/data/bgd_adm1.rds")
-# #shap with all variables combine=====
-# #division wise shap______________________________
-# #div_shap = read.csv("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/data/division_wise_shap_xgb.csv")
-# div_shap = read.csv("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/New folder/xgb/division_wise_shap_value_xgb.csv")
-# colnames(div_shap)
-# bd_shap_div <- bgd_adm1 %>%
-#   left_join(div_shap, by = c("NAME_1" = "Division")) %>%
-#   filter(!is.na(Place_of_delivery))
-# 
-# #Features and clean labels 
-# features <- c( "Place_of_delivery","ANC_visit", "Wealth_index","Husbands_education", "Mothers_Education",
-#                "Media_exposure" ,"Wanted_pregnancy","Residence", "Age", "Husbands_occupation","Birth_order" , "Religion" )
-# 
-# nice_labels <- c("Place of Delivery","ANC_visit", "Wealth Index","Husband's Education","Mother's Education", 
-#                  "Media_exposure" , "Wanted Pregnancy","Residence", "Age", "Husband's Occupation","Birth_order" , "Religion")
-# 
-# div_plot_shap <- function(feat, lab) {
-#   ggplot(bd_shap_div) +
-#     geom_sf(aes_string(fill = feat), color = "white", linewidth = 0.4) +
-#     scale_fill_viridis_c(
-#       option    = "viridis",
-#       direction = 1,
-#       name      = "Mean |SHAP|",
-#       guide     = guide_colorbar(
-#         title.position = "top",
-#         title.hjust    = 0.5,
-#         barwidth       = unit(2.5, "cm"),
-#         barheight      = unit(0.25, "cm"),
-#         frame.colour   = NA,
-#         ticks.colour   = "#6b4f3a"
-#       )
-#     ) +
-#     coord_sf(xlim   = c(88.0, 92.7),ylim   = c(20.7, 26.7),expand = FALSE
-#     ) +
-#     labs(x = NULL, y = NULL, title = lab) +
-#     theme_bw(base_size = 7) +
-#     theme(
-#       plot.title       = element_text(face = "bold", size = 9,
-#                                       hjust = 0.5, colour = "#3b2f2f"),
-#       axis.text        = element_blank(),
-#       axis.title       = element_blank(),
-#       axis.ticks       = element_blank(),
-#       panel.grid.major = element_line(colour = "white", linewidth = 0.2,
-#                                       linetype = "dotted"),
-#       panel.grid.minor = element_blank(),
-#       panel.border     = element_rect(colour = "#6b4f3a", fill = NA,
-#                                       linewidth = 0.8),
-#       panel.background = element_rect(fill = "white"),
-#       plot.background  = element_rect(fill = "white", color = NA),
-#       legend.position   = c(0.33, 0.08),
-#       legend.direction  = "horizontal",
-#       legend.background = element_blank(),
-#       legend.key        = element_blank(),
-#       legend.title      = element_text(face = "bold", size = 5,
-#                                        colour = "#3b2f2f"),
-#       legend.text       = element_text(size = 4.5, colour = "#3b2f2f"),
-#       plot.margin       = margin(3, 3, 3, 3)
-#     )
-# }
-# 
-# # ── Build all maps 
-# map_list <- mapply(div_plot_shap, features, nice_labels, SIMPLIFY = FALSE)
-# # ── Combine with patchwork 
-# div_shap_panel <- wrap_plots(map_list, ncol = 3) 
-# print(div_shap_panel)
-# ggsave("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/data/weighted map/division_shap_panel2.tiff",
-#        plot= div_shap_panel,dpi = 600,width = 18,height = 22,units = "cm",compression = "lzw",bg= "white")
-# ggsave("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/data/weighted map/division_shap_panel2.png",
-#        plot   = div_shap_panel,dpi= 300,width  = 18,height = 22,units  = "cm",bg     = "white")
-# cat("Saved → division_shap_panel.png\n")
-# 
-# 
-# 
-# 
-# 
-# 
-
-
-
-library(sf)
-library(dplyr)
-library(ggplot2)
-library(readr)
 library(patchwork)
 library(grid)
 
-# Load shapefiles
 bgd_adm1 <- readRDS("C:/Users/Raka/OneDrive/Thesis/data/bgd_adm1.rds")
-
-# Load SHAP values
 div_shap <- read.csv("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/New folder/xgb/division_wise_shap_value_xgb.csv")
 
-# Merge
-bd_shap_div <- bgd_adm1 %>%
-  left_join(div_shap, by = c("NAME_1" = "Division")) %>%
-  filter(!is.na(Place_of_delivery))
+bd_shap_div <- bgd_adm1 %>%left_join(div_shap, by = c("NAME_1" = "Division")) %>% filter(!is.na(Place_of_delivery))
 
 # Top 10 variables
-features <- c(
-  "Place_of_delivery",
-  "ANC_visit",
-  "Wealth_index",
-  "Husbands_education",
-  "Mothers_Education",
-  "Media_exposure",
-  "Wanted_pregnancy",
-  "Residence",
-  "Age",
-  "Husbands_occupation"
-)
+features <- c("Place_of_delivery","ANC_visit","Wealth_index","Husbands_education","Mothers_Education","Media_exposure",
+  "Wanted_pregnancy","Residence","Age","Husbands_occupation")
 
-# Clean labels
-nice_labels <- c(
-  "Place of Delivery",
-  "ANC Visit",
-  "Wealth Index",
-  "Husband's Education",
-  "Mother's Education",
-  "Media Exposure",
-  "Wanted Pregnancy",
-  "Residence",
-  "Age",
-  "Husband's Occupation"
-)
+nice_labels <- c("Place of Delivery","ANC Visit","Wealth Index", "Husband's Education", "Mother's Education", "Media Exposure",
+  "Wanted Pregnancy","Residence","Age","Husband's Occupation")
 
-# Map function
-div_plot_shap <- function(feat, lab) {
-  
-  ggplot(bd_shap_div) +
-    
-    geom_sf(
-      aes_string(fill = feat),
-      color = "white",
-      linewidth = 0.35
-    ) +
-    
-    scale_fill_viridis_c(
-      option = "viridis",
-      direction = 1,
-      name = "Mean |SHAP|",
-      
-      guide = guide_colorbar(
-        title.position = "top",
+div_plot_shap <- function(feat, lab) {  
+  ggplot(bd_shap_div) +    
+    geom_sf(aes_string(fill = feat),color = "white",linewidth = 0.35) +    
+    scale_fill_viridis_c(option = "viridis", direction = 1, name = "Mean |SHAP|",     
+      guide = guide_colorbar(title.position = "top",
         title.hjust = 0.5,
         barwidth = unit(2, "cm"),
         barheight = unit(0.22, "cm"),
