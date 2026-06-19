@@ -13,9 +13,9 @@ library(dplyr)
 library(haven)
 library(tibble)
 
-#Load your data 
-df <- read_csv("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/data/map_data.csv")
-#df <- read_csv("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/data/pnc_data_raw_clean.csv")   # replace with your actual file path
+#Loaddata 
+df <- read_csv("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/data/map_pnc_data.csv")
+#df <- read_csv("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/data/pnc_data_raw_clean.csv")   
 table(df$PNC_care)
 colnames(df)
 head(df)
@@ -329,7 +329,7 @@ cat("Saved → PNC_descriptive_table_weighted_CI.csv\n")
 
 
 #=================imputed data weighted==================
-df <- read_csv("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/data/pnc_data_imp_clean.csv")   # replace with your actual file path
+df <- read_csv("C:/Users/Raka/OneDrive/Thesis/Raka-Thesis/label encoding/models2/data/pnc_data_imp_clean.csv")  
 table(df$PNC_care)
 # weight variable 
 df <- df %>%mutate(weight = V005 / 1000000,PNC_care = factor(PNC_care, levels = c(0, 1), labels = c("No", "Yes")))
